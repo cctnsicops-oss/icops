@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kochi City Police - Citizen Service (THUNA) Pending Details</title>
+    <!-- Tailwind CSS for high efficiency custom layout -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- SheetJS for local file reading -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- html2pdf.js for generating landscape PDFs -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        
+        /* High compatibility print styles fallback layout override */
+        @media print {
+            body { background: white !important; color: black !important; }
+            #pdf-print-area { width: 100% !important; max-width: 100% !important; padding: 0 !important; box-shadow: none !important; border: none !important; }
+            .no-print { display: none !important; }
+            #pdf-dynamic-title { display: block !important; }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen">
+
+    <div class="max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-8">
+        
+        <!-- Heading Section -->
+        <div class="bg-white p-6 rounded-2xl shadow-xs border border-slate-100 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 no-print">
+            <div>
+                <h1 id="dynamic-main-heading" class="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                    📋 CITIZEN SERVICE (THUNA) PENDING DETAILS AS ON ...
+                </h1>
+                <p class="text-slate-500 text-xs mt-0.5">Upload daily spreadsheets to dynamically compile pending matrix data across SDPO targets.</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <button id="btn-export-matrix" class="bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs px-4 py-2 rounded-lg inline-flex items-center gap-2 transition cursor-pointer shadow-sm">
+                    📊 Export Grid (.xls)
+                </button>
+                <button id="btn-export-pdf" class="bg-rose-700 hover:bg-rose-800 text-white font-bold text-xs px-4 py-2 rounded-lg inline-flex items-center gap-2 transition cursor-pointer shadow-sm">
+                    📄 Export PDF (.pdf)
+                </button>
+                <button id="btn-browser-print" class="bg-slate-700 hover:bg-slate-800 text-white font-bold text-xs px-4 py-2 rounded-lg inline-flex items-center gap-2 transition cursor-pointer shadow-sm">
+                    🖨️ Direct Print
+                </button>
+            </div>
+        </div>
+
+        <!-- File Upload Section Grid -->
+        <div class="bg-white p-6 rounded-2xl shadow-xs border border-slate-100 mb-6 no-print">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4">📂 Step 1: Drop or Upload Daily Excel Files</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                
+                <!-- Accident GD -->
+                <div class="border-2 border-dashed border-red-200 bg-red-50/10 rounded-xl p-3 flex flex-col items-center justify-center relative hover:bg-red-50/30 transition min-h-[110px]">
+                    <span class="text-[11px] font-black text-red-600 mb-1">ACCIDENT GD (>2d)</span>
+                    <input type="file" id="upload-accident" accept=".xlsx, .xls" class="opacity-0 absolute inset-0 cursor-pointer w-full h-full">
+                    <div id="label-accident" class="text-[11px] text-slate-400 text-center truncate w-full px-2">Select file</div>
+                    <span id="badge-accident" class="hidden mt-1.5 text-[9px] font-bold px-2 py-0.5 bg-red-600 text-white rounded-full"></span>
+                </div>
+
+                <!-- Mike Request -->
+                <div class="border-2 border-dashed border-amber-200 bg-amber-50/10 rounded-xl p-3 flex flex-col items-center justify-center relative hover:bg-amber-50/30 transition min-h-[110px]">
+                    <span class="text-[11px] font-black text-amber-700 mb-1">MIKE REQUEST (>2d)</span>
+                    <input type="file" id="upload-mike" accept=".xlsx, .xls" class="opacity-0 absolute inset-0 cursor-pointer w-full h-full">
+                    <div id="label-mike" class="text-[11px] text-slate-400 text-center truncate w-full px-2">Select file</div>
+                    <span id="badge-mike" class="hidden mt-1.5 text-[9px] font-bold px-2 py-0.5 bg-amber-600 text-white rounded-full"></span>
+                </div>
+
+                <!-- NIOC Request -->
+                <div class="border-2 border-dashed border-emerald-200 bg-emerald-50/10 rounded-xl p-3 flex flex-col items-center justify-center relative hover:bg-emerald-50/30 transition min-h-[110px]">
+                    <span class="text-[11px] font-black text-emerald-700 mb-1">NIOC REQUEST (>2d)</span>
+                    <input type="file" id="upload-nioc" accept=".xlsx, .xls" class="opacity-0 absolute inset-0 cursor-pointer w-full h-full">
+                    <div id="label-nioc" class="text-[11px] text-slate-400 text-center truncate w-full px-2">Select file</div>
+                    <span id="badge-nioc" class="hidden mt-1.5 text-[9px] font-bold px-2 py-0.5 bg-emerald-600 text-white rounded-full"></span>
+                </div>
+
+                <!-- Lost Property -->
+                <div class="border-2 border-dashed border-blue-200 bg-blue-50/10 rounded-xl p-3 flex flex-col items-center justify-center relative hover:bg-blue-50/30 transition min-h-[110px]">
+                    <span class="text-[11px] font-black text-blue-700 mb-1">LOST PROPERTY (>14d)</span>
+                    <input type="file" id="upload-lost" accept=".xlsx, .xls" class="opacity-0 absolute inset-0 cursor-pointer w-full h-full">
+                    <div id="label-lost" class="text-[11px] text-slate-400 text-center truncate w-full px-2">Select file</div>
+                    <span id="badge-lost" class="hidden mt-1.5 text-[9px] font-bold px-2 py-0.5 bg-blue-600 text-white rounded-full"></span>
+                </div>
+
+                <!-- Complaint Details -->
+                <div class="border-2 border-dashed border-indigo-200 bg-indigo-50/10 rounded-xl p-3 flex flex-col items-center justify-center relative hover:bg-indigo-50/30 transition min-h-[110px]">
+                    <span class="text-[11px] font-black text-indigo-700 mb-1">COMPLAINTS (>14d)</span>
+                    <input type="file" id="upload-complaint" accept=".xlsx, .xls" class="opacity-0 absolute inset-0 cursor-pointer w-full h-full">
+                    <div id="label-complaint" class="text-[11px] text-slate-400 text-center truncate w-full px-2">Select file</div>
+                    <span id="badge-complaint" class="hidden mt-1.5 text-[9px] font-bold px-2 py-0.5 bg-indigo-600 text-white rounded-full"></span>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Printable View Container wrapper used by html2pdf -->
+        <div id="pdf-print-area" class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+            <!-- Hidden header inside print container area (only reveals to PDF generator) -->
+            <h2 id="pdf-dynamic-title" class="hidden text-center text-sm font-black text-slate-900 mb-4 uppercase tracking-wide">
+                CITIZEN SERVICE (THUNA) PENDING DETAILS AS ON ...
+            </h2>
+            
+            <div id="matrix-container" class="overflow-hidden">
+                <div class="overflow-x-auto custom-scrollbar">
+                    <table id="summary-data-table" class="w-full text-left text-[11px] border-collapse" style="background-color: #ffffff; color: #000000;">
+                        <thead>
+                            <tr class="bg-slate-900 text-white tracking-wide font-bold align-middle text-center divide-x divide-slate-800">
+                                <th class="p-3 font-bold text-left min-w-[200px]" style="background-color: #0f172a; color: #ffffff;">Police Station</th>
+                                <th class="p-2 font-bold max-w-[140px]" style="background-color: #0f172a; color: #ffffff;">No of Accident GD pending more than 2 days</th>
+                                <th class="p-2 font-bold max-w-[140px]" style="background-color: #0f172a; color: #ffffff;">No of Mike Request pending more than 2 days</th>
+                                <th class="p-2 font-bold max-w-[140px]" style="background-color: #0f172a; color: #ffffff;">No of NIOC Request pending more than 2 days</th>
+                                <th class="p-2 font-bold max-w-[140px]" style="background-color: #172554; color: #bfdbfe;">No of Lost Property pending more than 14 days</th>
+                                <th class="p-2 font-bold max-w-[140px]" style="background-color: #1e1b4b; color: #c7d2fe;">No of Complaints pending more than 14 days</th>
+                            </tr>
+                        </thead>
+                        <tbody id="matrix-rows" class="divide-y divide-slate-200">
+                            <!-- Dynamic data rows elements appended here -->
+                        </tbody>
+                        <tfoot id="matrix-foot">
+                            <!-- Grand Total row appended here -->
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const customStationSequence = [
+            "FORT COCHIN", "MATTANCHERRY", "KANNAMALY", "THOPPUMPADY", "PALLURUTHY KASABA", "FORT KOCHI COASTAL PS",
+            "MULAVUKAD", "CHERANALLOOR", "ELAMAKKARA PS", "ERNAKULAM CENTRAL", "ERNAKULAM TOWN NORTH", "VANITHA", "KADAVANTHRA",
+            "HARBOUR CRIME", "ERNAKULAM TOWN SOUTH", "MARADU PS", "PANANGAD", "PALARIVATTOM", "KOCHI METRO PS",
+            "ELOOR", "KALAMASSERRY", "THRIKKAKARA", "INFOPARK", "AMBALAMEDU", "HILL PALACE", "UDAYAMPEROOR", "CYBER CRIME PS KOCHI",
+            "ERNAKULAM CITY TRAFFIC WEST", "ERNAKULAM CITY TRAFFIC EAST", "TRAFFIC EAST"
+        ];
+        
+        const evaluationPriorityList = [...customStationSequence].sort((a, b) => b.length - a.length);
+
+        let masterSummaryCounts = {};
+        let operationalDateString = "";
+
+        function updateHeadingDisplay(detectedDate) {
+            const labelNode = document.getElementById('dynamic-main-heading');
+            const pdfLabelNode = document.getElementById('pdf-dynamic-title');
+            if (detectedDate) {
+                operationalDateString = detectedDate;
+            } else {
+                const today = new Date();
+                const dd = String(today.getDate()).padStart(2, '0');
+                const mm = String(today.getMonth() + 1).padStart(2, '0');
+                const yyyy = today.getFullYear();
+                operationalDateString = `${dd}/${mm}/${yyyy}`;
+            }
+            const cleanTitleString = `📋 CITIZEN SERVICE (THUNA) PENDING DETAILS AS ON ${operationalDateString}`;
+            labelNode.textContent = cleanTitleString;
+            pdfLabelNode.textContent = cleanTitleString.replace('📋 ', '');
+        }
+
+        function initDataStructure() {
+            customStationSequence.forEach(st => {
+                masterSummaryCounts[st] = { accident: 0, mike: 0, nioc: 0, lost: 0, complaint: 0 };
+            });
+            updateHeadingDisplay(null);
+        }
+        initDataStructure();
+
+        document.getElementById('upload-accident').addEventListener('change', (e) => executeFileParse(e, 'accident', 'label-accident', 'badge-accident', 'PENDING AT OFFICE', 2));
+        document.getElementById('upload-mike').addEventListener('change', (e) => executeFileParse(e, 'mike', 'label-mike', 'badge-mike', 'PENDING OFFICE', 2));
+        document.getElementById('upload-nioc').addEventListener('change', (e) => executeFileParse(e, 'nioc', 'label-nioc', 'badge-nioc', 'PENDING AT OFFICE', 2));
+        document.getElementById('upload-lost').addEventListener('change', (e) => executeFileParse(e, 'lost', 'label-lost', 'badge-lost', 'PENDING AT OFFICE', 14));
+        document.getElementById('upload-complaint').addEventListener('change', (e) => executeFileParse(e, 'complaint', 'label-complaint', 'badge-complaint', 'PENDING AT OFFICE', 14));
+
+        function executeFileParse(event, columnKey, labelId, badgeId, defaultOfficeCol, cutoffDays) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            document.getElementById(labelId).textContent = "Processing layout...";
+
+            const fileReader = new FileReader();
+            fileReader.onload = function(e) {
+                try {
+                    const buffer = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(buffer, { type: 'array' });
+                    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonRows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                    if (jsonRows.length === 0) throw new Error("Empty worksheet data");
+
+                    let headersRowIdx = 0;
+                    for (let i = 0; i < Math.min(6, jsonRows.length); i++) {
+                        if (jsonRows[i].includes('PENDING DAYS') || jsonRows[i].includes('SL No') || jsonRows[i].includes('PENDING OFFICE')) {
+                            headersRowIdx = i;
+                            break;
+                        }
+                    }
+
+                    const keys = jsonRows[headersRowIdx].map(h => String(h || '').trim());
+                    const pendingDaysKey = keys.find(k => k === 'PENDING DAYS');
+                    const officeKey = keys.find(k => k === defaultOfficeCol || k === 'PENDING AT OFFICE' || k === 'PENDING OFFICE');
+                    const dateKey = keys.find(k => k === 'DATE');
+
+                    customStationSequence.forEach(st => { masterSummaryCounts[st][columnKey] = 0; });
+
+                    let totalImportedMatched = 0;
+                    let sampleDateExtract = null;
+
+                    for (let r = headersRowIdx + 1; r < jsonRows.length; r++) {
+                        const row = jsonRows[r];
+                        if (!row || row.length === 0) continue;
+
+                        let rowMap = {};
+                        keys.forEach((k, idx) => { rowMap[k] = row[idx]; });
+
+                        if (!sampleDateExtract && rowMap[dateKey]) {
+                            let cleanDate = String(rowMap[dateKey]).trim().split(" ")[0];
+                            if (cleanDate && cleanDate.includes("/")) {
+                                sampleDateExtract = cleanDate;
+                            }
+                        }
+
+                        let activeDays = parseInt(rowMap[pendingDaysKey], 10);
+                        let officeString = String(rowMap[officeKey] || '').toUpperCase().trim();
+
+                        if (officeString.includes("MATTANCHERY")) {
+                            officeString = officeString.replace("MATTANCHERY", "MATTANCHERRY");
+                        }
+
+                        if (!isNaN(activeDays) && activeDays > cutoffDays && officeString) {
+                            let matchedStation = null;
+                            
+                            for (let currentStation of evaluationPriorityList) {
+                                let stationUpper = currentStation.toUpperCase();
+                                if (officeString === stationUpper || 
+                                    officeString.startsWith(stationUpper + " ") || 
+                                    officeString.includes(" " + stationUpper + " ") || 
+                                    officeString.endsWith(" " + stationUpper) || 
+                                    (officeString.includes(stationUpper) && stationUpper.length > 12)) {
+                                    matchedStation = currentStation;
+                                    break;
+                                }
+                            }
+                            
+                            if (!matchedStation) {
+                                for (let currentStation of evaluationPriorityList) {
+                                    if (officeString.includes(currentStation.toUpperCase())) {
+                                        matchedStation = currentStation;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            if (matchedStation) {
+                                masterSummaryCounts[matchedStation][columnKey]++;
+                                totalImportedMatched++;
+                            }
+                        }
+                    }
+
+                    if (sampleDateExtract) {
+                        updateHeadingDisplay(sampleDateExtract);
+                    }
+
+                    document.getElementById(labelId).textContent = file.name;
+                    document.getElementById(labelId).className = "text-[11px] font-semibold text-slate-700 truncate w-full px-2 mt-0.5 text-center";
+                    document.getElementById(badgeId).classList.remove('hidden');
+                    document.getElementById(badgeId).textContent = `${totalImportedMatched} verified records`;
+                    
+                    renderMatrixUI();
+
+                } catch (err) {
+                    console.error(err);
+                    document.getElementById(labelId).textContent = "Format error encountered.";
+                    document.getElementById(labelId).className = "text-[11px] text-red-500 font-bold text-center";
+                }
+            };
+            fileReader.readAsArrayBuffer(file);
+        }
+
+        function createSdpoRow(title) {
+            const tr = document.createElement('tr');
+            tr.className = "bg-slate-100 font-black text-slate-900 border-y border-slate-300 text-center";
+            tr.innerHTML = `
+                <td class="p-2 font-black uppercase text-[11px] tracking-wide text-center" style="background-color: #f1f5f9; font-weight: 900;" colspan="6">${title}</td>
+            `;
+            return tr;
+        }
+
+        function createBlankRow() {
+            const tr = document.createElement('tr');
+            tr.className = "bg-white border-y border-slate-200 h-[22px]";
+            tr.innerHTML = `<td class="p-2" colspan="6">&nbsp;</td>`;
+            return tr;
+        }
+
+        function renderMatrixUI() {
+            const tableBody = document.getElementById('matrix-rows');
+            const tableFoot = document.getElementById('matrix-foot');
+            tableBody.innerHTML = '';
+            tableFoot.innerHTML = '';
+            
+            let totalAccident = 0, totalMike = 0, totalNioc = 0, totalLost = 0, totalComplaint = 0;
+
+            customStationSequence.forEach(st => {
+                if (st === "FORT COCHIN") tableBody.appendChild(createSdpoRow("MATTANCHERY SDPO"));
+                if (st === "MULAVUKAD") tableBody.appendChild(createSdpoRow("ERNAKULAM CENTRAL SDPO"));
+                if (st === "HARBOUR CRIME") tableBody.appendChild(createSdpoRow("ERNAKULAM SDPO"));
+                if (st === "ELOOR") tableBody.appendChild(createSdpoRow("THRIKAKKARA SDPO"));
+
+                const metrics = masterSummaryCounts[st];
+                
+                totalAccident += metrics.accident;
+                totalMike += metrics.mike;
+                totalNioc += metrics.nioc;
+                totalLost += metrics.lost;
+                totalComplaint += metrics.complaint;
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition border-b border-slate-200 divide-x divide-slate-100 text-center";
+
+                let aVal = metrics.accident > 0 ? `<span class="px-1.5 py-0.5 bg-red-100 text-red-800 font-bold rounded">${metrics.accident}</span>` : `0`;
+                let mVal = metrics.mike > 0 ? `<span class="px-1.5 py-0.5 bg-amber-100 text-amber-800 font-bold rounded">${metrics.mike}</span>` : `0`;
+                let nVal = metrics.nioc > 0 ? `<span class="px-1.5 py-0.5 bg-emerald-100 text-emerald-800 font-bold rounded">${metrics.nioc}</span>` : `0`;
+                let lVal = metrics.lost > 0 ? `<span class="px-1.5 py-0.5 bg-blue-100 text-blue-800 font-bold rounded">${metrics.lost}</span>` : `0`;
+                let cVal = metrics.complaint > 0 ? `<span class="px-1.5 py-0.5 bg-indigo-100 text-indigo-800 font-bold rounded">${metrics.complaint}</span>` : `0`;
+
+                tr.innerHTML = `
+                    <td class="p-2 font-bold text-slate-700 text-left pl-4" style="text-align: left; font-weight: bold;">${st}</td>
+                    <td class="p-2">${aVal}</td>
+                    <td class="p-2">${mVal}</td>
+                    <td class="p-2">${nVal}</td>
+                    <td class="p-2">${lVal}</td>
+                    <td class="p-2">${cVal}</td>
+                `;
+                tableBody.appendChild(tr);
+
+                if (st === "UDAYAMPEROOR") {
+                    tableBody.appendChild(createBlankRow());
+                }
+            });
+
+            const footerTr = document.createElement('tr');
+            footerTr.className = "bg-slate-900 text-white font-black text-center text-[11px] divide-x divide-slate-800 border-t-2 border-slate-950";
+            
+            footerTr.innerHTML = `
+                <td class="p-2.5 text-left font-black tracking-wider uppercase text-slate-200 pl-4" style="background-color: #0f172a; color: #ffffff; text-align: left; font-weight: bold;">TOTAL SUM</td>
+                <td class="p-2.5 font-black text-red-300" style="background-color: #0f172a; color: #fca5a5; font-weight: bold;">${totalAccident}</td>
+                <td class="p-2.5 font-black text-amber-300" style="background-color: #0f172a; color: #fcd34d; font-weight: bold;">${totalMike}</td>
+                <td class="p-2.5 font-black text-emerald-300" style="background-color: #0f172a; color: #6ee7b7; font-weight: bold;">${totalNioc}</td>
+                <td class="p-2.5 font-black text-blue-300" style="background-color: #172554; color: #93c5fd; font-weight: bold;">${totalLost}</td>
+                <td class="p-2.5 font-black text-indigo-300" style="background-color: #1e1b4b; color: #c7d2fe; font-weight: bold;">${totalComplaint}</td>
+            `;
+            tableFoot.appendChild(footerTr);
+        }
+
+        // EXPORT PRINT-READY EXCEL GRID
+        document.getElementById('btn-export-matrix').addEventListener('click', () => {
+            let totalAccident = 0, totalMike = 0, totalNioc = 0, totalLost = 0, totalComplaint = 0;
+            let totalRowsCount = 0;
+            let rowStrings = "";
+            
+            customStationSequence.forEach(st => {
+                let labelToInject = null;
+                if (st === "FORT COCHIN") labelToInject = "MATTANCHERY SDPO";
+                if (st === "MULAVUKAD") labelToInject = "ERNAKULAM CENTRAL SDPO";
+                if (st === "HARBOUR CRIME") labelToInject = "ERNAKULAM SDPO";
+                if (st === "ELOOR") labelToInject = "THRIKAKKARA SDPO";
+
+                if (labelToInject) {
+                    totalRowsCount++;
+                    rowStrings += `
+                <Row ss:Height="22">
+                    <Cell ss:MergeAcross="5" ss:StyleID="sdpoHeaderMerged"><Data ss:Type="String">${labelToInject}</Data></Cell>
+                </Row>`;
+                }
+
+                let metrics = masterSummaryCounts[st];
+                totalAccident += metrics.accident;
+                totalMike += metrics.mike;
+                totalNioc += metrics.nioc;
+                totalLost += metrics.lost;
+                totalComplaint += metrics.complaint;
+                totalRowsCount++;
+                
+                rowStrings += `
+                <Row ss:AutoFitHeight="1">
+                    <Cell ss:StyleID="cellLeft"><Data ss:Type="String">${st}</Data></Cell>
+                    <Cell ss:StyleID="cellCenter"><Data ss:Type="Number">${metrics.accident}</Data></Cell>
+                    <Cell ss:StyleID="cellCenter"><Data ss:Type="Number">${metrics.mike}</Data></Cell>
+                    <Cell ss:StyleID="cellCenter"><Data ss:Type="Number">${metrics.nioc}</Data></Cell>
+                    <Cell ss:StyleID="cellCenter"><Data ss:Type="Number">${metrics.lost}</Data></Cell>
+                    <Cell ss:StyleID="cellCenter"><Data ss:Type="Number">${metrics.complaint}</Data></Cell>
+                </Row>`;
+
+                if (st === "UDAYAMPEROOR") {
+                    totalRowsCount++;
+                    rowStrings += `
+                <Row ss:Height="18">
+                    <Cell ss:StyleID="cellCenter"><Data ss:Type="String"></Data></Cell>
+                    <Cell ss:StyleID="cellCenter"><Data ss:Type="String"></Data></Cell>
+                    <Cell ss:StyleID="cellCenter"><Data ss:Type="String"></Data></Cell>
+                    <Cell ss:StyleID="cellCenter"><Data ss:Type="String"></Data></Cell>
+                    <Cell ss:StyleID="cellCenter"><Data ss:Type="String"></Data></Cell>
+                    <Cell ss:StyleID="cellCenter"><Data ss:Type="String"></Data></Cell>
+                </Row>`;
+                }
+            });
+
+            const xmlTemplate = `<?xml version="1.0"?>
+            <?mso-application progid="Excel.Sheet"?>
+            <Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+             xmlns:o="urn:schemas-microsoft-com:office:office"
+             xmlns:x="urn:schemas-microsoft-com:office:excel"
+             xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+             xmlns:html="http://www.w3.org/TR/REC-html40">
+             <Styles>
+              <Style ss:ID="Default" ss:Name="Normal">
+               <Alignment ss:Vertical="Center"/>
+               <Borders/>
+               <Font ss:FontName="Calibri" x:Family="Swiss" ss:Size="11" ss:Color="#000000"/>
+               <Interior/>
+               <NumberFormat/>
+               <Protection/>
+              </Style>
+              <Style ss:ID="mainHeader">
+               <Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1"/>
+               <Borders>
+                <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/>
+                <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1"/>
+                <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1"/>
+                <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1"/>
+               </Borders>
+               <Font ss:FontName="Calibri" x:Family="Swiss" ss:Size="11" ss:Bold="1"/>
+              </Style>
+              <Style ss:ID="columnHeader">
+               <Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1"/>
+               <Borders>
+                <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/>
+                <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1"/>
+                <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1"/>
+                <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1"/>
+               </Borders>
+               <Font ss:FontName="Calibri" x:Family="Swiss" ss:Size="11" ss:Bold="1"/>
+              </Style>
+              <Style ss:ID="sdpoHeaderMerged">
+               <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+               <Borders>
+                <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/>
+                <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1"/>
+                <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1"/>
+                <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1"/>
+               </Borders>
+               <Font ss:FontName="Calibri" x:Family="Swiss" ss:Size="11" ss:Bold="1"/>
+               <Interior ss:Color="#F1F5F9" ss:Pattern="Solid"/>
+              </Style>
+              <Style ss:ID="cellLeft">
+               <Alignment ss:Horizontal="Left" ss:Vertical="Center"/>
+               <Borders>
+                <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/>
+                <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1"/>
+                <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1"/>
+                <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1"/>
+               </Borders>
+              </Style>
+              <Style ss:ID="cellCenter">
+               <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+               <Borders>
+                <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/>
+                <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1"/>
+                <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1"/>
+                <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1"/>
+               </Borders>
+              </Style>
+              <Style ss:ID="totalRow">
+               <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+               <Borders>
+                <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/>
+                <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1"/>
+                <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1"/>
+                <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1"/>
+               </Borders>
+               <Font ss:FontName="Calibri" x:Family="Swiss" ss:Size="11" ss:Bold="1"/>
+              </Style>
+              <Style ss:ID="totalRowLeft">
+               <Alignment ss:Horizontal="Left" ss:Vertical="Center"/>
+               <Borders>
+                <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/>
+                <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1"/>
+                <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1"/>
+                <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1"/>
+               </Borders>
+               <Font ss:FontName="Calibri" x:Family="Swiss" ss:Size="11" ss:Bold="1"/>
+              </Style>
+             </Styles>
+             <Worksheet ss:Name="Thuna Audit Summary">
+              <Table ss:ExpandedColumnCount="6" ss:ExpandedRowCount="${totalRowsCount + 4}" x:FullColumns="1" x:FullRows="1" ss:DefaultRowHeight="20">
+               <Column ss:Width="180"/>
+               <Column ss:Width="140"/>
+               <Column ss:Width="140"/>
+               <Column ss:Width="140"/>
+               <Column ss:Width="140"/>
+               <Column ss:Width="140"/>
+               
+               <Row ss:Height="24">
+                <Cell ss:MergeAcross="5" ss:StyleID="mainHeader"><Data ss:Type="String">CITIZEN SERVICE (THUNA) PENDING DETAILS AS ON ${operationalDateString}</Data></Cell>
+               </Row>
+               
+               <Row ss:Height="40">
+                <Cell ss:StyleID="columnHeader"><Data ss:Type="String">Police Station</Data></Cell>
+                <Cell ss:StyleID="columnHeader"><Data ss:Type="String">No of Accident GD pending more than 2 days</Data></Cell>
+                <Cell ss:StyleID="columnHeader"><Data ss:Type="String">No of Mike Request pending more than 2 days</Data></Cell>
+                <Cell ss:StyleID="columnHeader"><Data ss:Type="String">No of NIOC Request pending more than 2 days</Data></Cell>
+                <Cell ss:StyleID="columnHeader"><Data ss:Type="String">No of Lost Property pending more than 14 days</Data></Cell>
+                <Cell ss:StyleID="columnHeader"><Data ss:Type="String">No of Complaints pending more than 14 days</Data></Cell>
+               </Row>
+               
+               ${rowStrings}
+               
+               <Row ss:Height="22">
+                <Cell ss:StyleID="totalRowLeft"><Data ss:Type="String">TOTAL SUM</Data></Cell>
+                <Cell ss:StyleID="totalRow"><Data ss:Type="Number">${totalAccident}</Data></Cell>
+                <Cell ss:StyleID="totalRow"><Data ss:Type="Number">${totalMike}</Data></Cell>
+                <Cell ss:StyleID="totalRow"><Data ss:Type="Number">${totalNioc}</Data></Cell>
+                <Cell ss:StyleID="totalRow"><Data ss:Type="Number">${totalLost}</Data></Cell>
+                <Cell ss:StyleID="totalRow"><Data ss:Type="Number">${totalComplaint}</Data></Cell>
+               </Row>
+              </Table>
+              <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
+               <PageSetup>
+                <Layout x:Orientation="Landscape"/>
+                <PageMargins x:Bottom="0.5" x:Left="0.5" x:Right="0.5" x:Top="0.5"/>
+               </PageSetup>
+               <Print>
+                <FitWidth>1</FitWidth>
+                <FitHeight>0</FitHeight>
+                <ValidPrinterInfo/>
+               </Print>
+               <Panes/>
+               <ProtectObjects>False</ProtectObjects>
+               <ProtectScenarios>False</ProtectScenarios>
+              </WorksheetOptions>
+             </Worksheet>
+            </Workbook>`;
+
+            const blobObject = new Blob([xmlTemplate], { type: "application/vnd.ms-excel" });
+            const anchorElement = document.createElement("a");
+            anchorElement.href = URL.createObjectURL(blobObject);
+            anchorElement.download = `Citizen_Service_Thuna_Pending_Summary_${operationalDateString.replace(/\//g, '-')}.xls`;
+            document.body.appendChild(anchorElement);
+            anchorElement.click();
+            document.body.removeChild(anchorElement);
+        });
+
+        // EXPORT VIA HTML2PDF (WITH AUTOMATIC SYSTEM PRINTING FALLBACK OVERRIDE)
+        document.getElementById('btn-export-pdf').addEventListener('click', function() {
+            const btn = this;
+            const element = document.getElementById('pdf-print-area');
+            const pdfTitleNode = document.getElementById('pdf-dynamic-title');
+            
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = `⏳ Compiling PDF...`;
+
+            pdfTitleNode.classList.remove('hidden');
+
+            const options = {
+                margin:       [0.3, 0.3, 0.3, 0.3],
+                filename:     `Citizen_Service_Thuna_Pending_Summary_${operationalDateString.replace(/\//g, '-')}.pdf`,
+                image:        { type: 'jpeg', quality: 0.95 },
+                html2canvas:  { 
+                    scale: 1.5, 
+                    useCORS: true, 
+                    letterRendering: true,
+                    logging: false,
+                    backgroundColor: '#ffffff'
+                },
+                jsPDF:        { unit: 'in', format: 'a4', orientation: 'landscape' }
+            };
+
+            setTimeout(() => {
+                html2pdf()
+                    .set(options)
+                    .from(element)
+                    .save()
+                    .then(() => {
+                        pdfTitleNode.classList.add('hidden');
+                        btn.disabled = false;
+                        btn.innerHTML = originalText;
+                    })
+                    .catch(err => {
+                        console.error("PDF Library failure detected:", err);
+                        pdfTitleNode.classList.add('hidden');
+                        btn.disabled = false;
+                        btn.innerHTML = originalText;
+                        
+                        // Fire alternate recovery layer seamlessly
+                        if(confirm("The standard canvas engine encountered a browser layout block. Would you like to use your browser's direct system printer print option instead? (Set layout to Landscape for perfect results)")) {
+                            window.print();
+                        }
+                    });
+            }, 300); 
+        });
+
+        // DIRECT SYSTEM PRINT TRIGGER
+        document.getElementById('btn-browser-print').addEventListener('click', () => {
+            const pdfTitleNode = document.getElementById('pdf-dynamic-title');
+            pdfTitleNode.classList.remove('hidden');
+            window.print();
+            setTimeout(() => { pdfTitleNode.classList.add('hidden'); }, 1000);
+        });
+
+        renderMatrixUI();
+    </script>
+</body>
+</html>

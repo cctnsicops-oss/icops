@@ -1,0 +1,113 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Passport Pending Report</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        table { border-collapse: collapse; width: 100%; margin-top: 20px; font-family: Arial, sans-serif; }
+        th, td { border: 1px solid #000; padding: 8px; text-align: center; word-wrap: break-word; }
+        th { background-color: #f2f2f2; }
+        h2 { font-family: Arial, sans-serif; text-align: center; }
+    </style>
+</head>
+<body>
+    <h2 id="reportTitle">Passport Pending Details in ICOPS as on 2026-07-17</h2>
+    <input type="file" id="upload" accept=".xlsx, .xls" />
+    <button onclick="processData()">Generate Report</button>
+    <div id="output"></div>
+    <button id="downloadBtn" style="display:none; margin-top: 10px;" onclick="downloadExcel()">Download Excel</button>
+
+    <script>
+        let currentData = [];
+        let totals = {'Below 2 days': 0, '2 to 5 days': 0, '6 to 9 days': 0, '10 to 14 days': 0, 'Above 14 days': 0, 'Total': 0};
+        const order = ['FORT COCHIN', 'MATTANCHERRY', 'KANNAMALY', 'THOPPUMPADY', 'PALLURUTHY KASABA', 'MULAVUKAD', 'CHERANALLOOR', 'ELAMAKKARA PS', 'ERNAKULAM CENTRAL', 'ERNAKULAM TOWN NORTH', 'VANITHA', 'KADAVANTHRA', 'HARBOUR CRIME', 'ERNAKULAM TOWN SOUTH', 'MARADU PS', 'PANANGAD', 'PALARIVATTOM', 'KOCHI METRO PS', 'ELOOR', 'KALAMASSERRY', 'THRIKKAKARA', 'INFOPARK', 'AMBALAMEDU', 'HILL PALACE', 'UDAYAMPEROOR'];
+
+        function processData() {
+            const fileInput = document.getElementById('upload');
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                const sheet = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {range: 1});
+
+                const summary = {};
+                order.forEach(st => {
+                    summary[st] = {'Below 2 days': 0, '2 to 5 days': 0, '6 to 9 days': 0, '10 to 14 days': 0, 'Above 14 days': 0};
+                });
+                
+                totals = {'Below 2 days': 0, '2 to 5 days': 0, '6 to 9 days': 0, '10 to 14 days': 0, 'Above 14 days': 0, 'Total': 0};
+
+                sheet.forEach(row => {
+                    if (row['STATUS'] !== 'CLOSED') {
+                        const station = row['POLICE STATION'];
+                        const days = parseInt(row['PENDING DAYS']);
+                        if (summary[station]) {
+                            if (days < 2) { summary[station]['Below 2 days']++; totals['Below 2 days']++; }
+                            else if (days <= 5) { summary[station]['2 to 5 days']++; totals['2 to 5 days']++; }
+                            else if (days <= 9) { summary[station]['6 to 9 days']++; totals['6 to 9 days']++; }
+                            else if (days <= 14) { summary[station]['10 to 14 days']++; totals['10 to 14 days']++; }
+                            else { summary[station]['Above 14 days']++; totals['Above 14 days']++; }
+                            totals['Total']++;
+                        }
+                    }
+                });
+
+                currentData = order.map(station => ({
+                    'Police Station': station,
+                    ...summary[station]
+                }));
+
+                let html = '<table><tr><th>Police Station</th><th>Below 2 days</th><th>2 to 5 days</th><th>6 to 9 days</th><th>10 to 14 days</th><th>Above 14 days</th><th>Total</th></tr>';
+                currentData.forEach(row => {
+                    const rowTotal = row['Below 2 days'] + row['2 to 5 days'] + row['6 to 9 days'] + row['10 to 14 days'] + row['Above 14 days'];
+                    html += `<tr><td>${row['Police Station']}</td><td>${row['Below 2 days']}</td><td>${row['2 to 5 days']}</td><td>${row['6 to 9 days']}</td><td>${row['10 to 14 days']}</td><td>${row['Above 14 days']}</td><td>${rowTotal}</td></tr>`;
+                });
+                html += `<tr><th>TOTAL</th><th>${totals['Below 2 days']}</th><th>${totals['2 to 5 days']}</th><th>${totals['6 to 9 days']}</th><th>${totals['10 to 14 days']}</th><th>${totals['Above 14 days']}</th><th>${totals['Total']}</th></tr>`;
+                html += '</table>';
+                document.getElementById('output').innerHTML = html;
+                document.getElementById('downloadBtn').style.display = 'block';
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function downloadExcel() {
+            const newWB = XLSX.utils.book_new();
+            // Removed empty row array from wsData
+            const wsData = [
+                ['Passport Pending Details in ICOPS as on 2026-07-17'],
+                ['Police Station', 'Below 2 days', '2 to 5 days', '6 to 9 days', '10 to 14 days', 'Above 14 days', 'Total'],
+                ...currentData.map(r => [r['Police Station'], r['Below 2 days'], r['2 to 5 days'], r['6 to 9 days'], r['10 to 14 days'], r['Above 14 days'], r['Below 2 days'] + r['2 to 5 days'] + r['6 to 9 days'] + r['10 to 14 days'] + r['Above 14 days']]),
+                ['TOTAL', totals['Below 2 days'], totals['2 to 5 days'], totals['6 to 9 days'], totals['10 to 14 days'], totals['Above 14 days'], totals['Total']]
+            ];
+            const newWS = XLSX.utils.aoa_to_sheet(wsData);
+            
+            // Set cell borders
+            const range = XLSX.utils.decode_range(newWS['!ref']);
+            for(let R = range.s.r; R <= range.e.r; ++R) {
+                for(let C = range.s.c; C <= range.e.c; ++C) {
+                    const cell_address = {c:C, r:R};
+                    const cell_ref = XLSX.utils.encode_cell(cell_address);
+                    if(!newWS[cell_ref]) continue;
+                    newWS[cell_ref].s = {
+                        border: {
+                            top: {style: 'thin'},
+                            bottom: {style: 'thin'},
+                            left: {style: 'thin'},
+                            right: {style: 'thin'}
+                        }
+                    };
+                }
+            }
+            
+            newWS['!merges'] = [{ s: {r: 0, c: 0}, e: {r: 0, c: 6} }];
+            
+            XLSX.utils.book_append_sheet(newWB, newWS, "Pending Report");
+            XLSX.writeFile(newWB, "Passport_Pending_Report_2026-07-17.xlsx");
+        }
+    </script>
+</body>
+</html>

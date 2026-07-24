@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iCOPS Pending Dashboard</title>
+    <!-- SheetJS for Excel Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 15px; background-color: #f4f7f6; color: #333; font-size: 11px; }
+        .container { max-width: 100%; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h2 { color: #1a365d; text-align: center; margin-bottom: 5px; font-size: 18px; }
+        .sub-note { text-align: center; font-size: 11px; color: #d9534f; font-style: italic; margin-bottom: 15px; }
+        #drop-area { border: 2px dashed #007bff; padding: 20px; text-align: center; margin-bottom: 15px; border-radius: 6px; cursor: pointer; background-color: #f8fafd; }
+        #drop-area:hover { background-color: #eef5fc; }
+        .btn-container { text-align: center; margin-bottom: 15px; }
+        button { padding: 8px 18px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: bold; margin: 4px; }
+        button:hover { background-color: #218838; }
+        button.upload-btn { background-color: #007bff; }
+        button.upload-btn:hover { background-color: #0056b3; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 11px; table-layout: fixed; }
+        th, td { 
+            border: 1px solid #cbd5e1; 
+            padding: 6px 3px; 
+            text-align: center; 
+            word-wrap: break-word; 
+            white-space: normal; 
+            vertical-align: middle; 
+        }
+        th { background-color: #1e293b; color: white; font-weight: 600; line-height: 1.2; }
+        .note-row { background-color: #f1f5f9; font-style: italic; color: #d9534f; padding: 8px; font-weight: normal; }
+        
+        th:first-child, td:first-child { text-align: left; width: 15%; font-weight: bold; }
+        tr:nth-child(even) { background-color: #f8fafc; }
+        tfoot td { font-weight: bold; background-color: #e2e8f0; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2 id="mainHeading">Process Pending in iCOPS</h2>
+    <div class="sub-note">
+        Note: The name of each police station is displayed differently in each court, which is why police stations are listed multiple times under different names.
+    </div>
+    <div id="drop-area" onclick="document.getElementById('fileInput').click()">
+        <p style="margin:0; font-size: 14px; color: #475569;"><strong>Drop Excel files here</strong> or click to browse</p>
+        <input type="file" id="fileInput" multiple accept=".xlsx, .xls" style="display:none;">
+    </div>
+    <div class="btn-container">
+        <button class="upload-btn" onclick="document.getElementById('fileInput').click()">Upload Files</button>
+        <button id="exportBtn" onclick="exportToExcel()" style="display:none;">Download Excel</button>
+    </div>
+    <div id="output"></div>
+</div>
+
+<script>
+    document.getElementById('fileInput').addEventListener('change', handleFileSelect, false);
+
+    let allData = [];
+    const today = new Date();
+    const formattedDate = today.toLocaleDateString('en-GB');
+
+    document.getElementById('mainHeading').innerText = "Process Pending in iCOPS as on " + formattedDate;
+
+    function getNormalizedStationName(name) {
+        if (!name) return 'Unknown';
+        let str = name.toString().trim().toLowerCase();
+        
+        if (str.includes('ambalamedu')) return 'Ambalamedu';
+        if (str.includes('cheranalloor')) return 'Cheranalloor';
+        if (str.includes('traffic east') || (str.includes('east') && str.includes('traffic'))) return 'Traffic East';
+        if (str.includes('traffic west') || (str.includes('west') && str.includes('traffic'))) return 'Traffic West';
+        if (str.includes('hostel')) return 'Hostel';
+        if (str.includes('cyber')) return 'Cyber';
+        if (str.includes('elamakkara')) return 'Elamakkara';
+        if (str.includes('eloor')) return 'Eloor';
+        if (str.includes('ernakulam central')) return 'Ernakulam Central';
+        if (str.includes('ernakulam north') || str.includes('it north')) return 'Ernakulam North';
+        if (str.includes('fort kochi')) return 'Fort Kochi';
+        if (str.includes('ernakulam town south') || str.includes('ernakulam south')) return 'Ernakulam Town South';
+        
+        let cleanName = name.toString().trim();
+        return cleanName.replace(/police\s*station/i, '').trim();
+    }
+
+    function handleFileSelect(e) {
+        const files = e.target.files;
+        if (!files || files.length === 0) return;
+        allData = [];
+        let filesRead = 0;
+
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const reader = new FileReader();
+
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const json = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+
+                parseExcelData(json);
+                filesRead++;
+
+                if (filesRead === files.length) {
+                    processAndDisplayData();
+                    document.getElementById('exportBtn').style.display = 'inline-block';
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+    }
+
+    function parseExcelData(rows) {
+        let headerIndex = -1;
+        for (let i = 0; i < rows.length; i++) {
+            if (rows[i] && (rows[i].includes('SL No') || rows[i].includes('Process Type') || rows[i].includes('Received Office'))) {
+                headerIndex = i;
+                break;
+            }
+        }
+
+        if (headerIndex === -1) headerIndex = 0;
+
+        const headers = rows[headerIndex];
+        for (let i = headerIndex + 1; i < rows.length; i++) {
+            const row = rows[i];
+            if (row && row.length > 0) {
+                let obj = {};
+                for (let j = 0; j < headers.length; j++) {
+                    obj[headers[j]] = row[j];
+                }
+                allData.push(obj);
+            }
+        }
+    }
+
+    function processAndDisplayData() {
+        const stations = {};
+
+        allData.forEach(row => {
+            const station = getNormalizedStationName(row['Received Office']);
+            const type = row['Process Type'];
+            const status = row['Process Status'];
+            const hearingDateStr = row['Next hearing Date'];
+
+            if (!station || station === 'Unknown') return;
+
+            if (!stations[station]) {
+                stations[station] = {
+                    summons: { total: 0, served: 0, pending: 0, hearingPassed: 0, next7Days: 0 },
+                    warrant: { total: 0, served: 0, pending: 0, hearingPassed: 0, next7Days: 0 },
+                    notice: { total: 0, served: 0, pending: 0, hearingPassed: 0, next7Days: 0 }
+                };
+            }
+
+            let isServed = (status === 'Submitted' || status === 'Executed');
+            let isPending = !isServed;
+
+            let hearingDate = null;
+            if (hearingDateStr) {
+                let parts = hearingDateStr.toString().split('/');
+                if (parts.length === 3) {
+                    hearingDate = new Date(parts[2], parts[1] - 1, parts[0]);
+                }
+            }
+
+            let targetGroup = null;
+            if (type === 'Summons') targetGroup = stations[station].summons;
+            else if (type === 'Warrant') targetGroup = stations[station].warrant;
+            else if (type === 'Notice') targetGroup = stations[station].notice;
+
+            if (targetGroup) {
+                targetGroup.total++;
+                if (isServed) targetGroup.served++;
+                if (isPending) {
+                    targetGroup.pending++;
+                    if (hearingDate) {
+                        if (hearingDate < today) targetGroup.hearingPassed++;
+                        const diffDays = Math.ceil((hearingDate - today) / (1000 * 3600 * 24));
+                        if (diffDays >= 0 && diffDays <= 7) targetGroup.next7Days++;
+                    }
+                }
+            }
+        });
+
+        displayTable(stations);
+    }
+
+    function displayTable(stations) {
+        let sortedStations = Object.keys(stations).sort();
+
+        let html = '<table id="dataTable"><thead>';
+        html += '<tr><th colspan="17" class="note-row">Note: The name of each police station is displayed differently in each court, which is why police stations are listed multiple times under different names.</th></tr>';
+
+        html += '<tr>';
+        html += '<th>Police Station</th>';
+        html += '<th>Total Process Received</th>';
+        
+        html += '<th>Total Summons</th><th>Summons Served</th><th>Summons Pending</th><th>Summons Hearing Passed</th><th>Summons Next 7 Days</th>';
+        html += '<th>Total Warrant</th><th>Warrant Served</th><th>Warrant Pending</th><th>Warrant Hearing Passed</th><th>Warrant Next 7 Days</th>';
+        html += '<th>Total Notice</th><th>Notice Served</th><th>Notice Pending</th><th>Notice Hearing Passed</th><th>Notice Next 7 Days</th>';
+        
+        html += '</tr></thead><tbody>';
+
+        let totals = {
+            processReceived: 0,
+            summons: { total: 0, served: 0, pending: 0, hearingPassed: 0, next7Days: 0 },
+            warrant: { total: 0, served: 0, pending: 0, hearingPassed: 0, next7Days: 0 },
+            notice: { total: 0, served: 0, pending: 0, hearingPassed: 0, next7Days: 0 }
+        };
+
+        sortedStations.forEach(station => {
+            const stats = stations[station];
+            let totalProcessReceived = stats.summons.total + stats.warrant.total + stats.notice.total;
+            
+            html += `<tr>`;
+            html += `<td style="text-align:left;">${station}</td>`;
+            html += `<td>${totalProcessReceived}</td>`;
+            
+            html += `<td>${stats.summons.total}</td><td>${stats.summons.served}</td><td>${stats.summons.pending}</td><td>${stats.summons.hearingPassed}</td><td>${stats.summons.next7Days}</td>`;
+            html += `<td>${stats.warrant.total}</td><td>${stats.warrant.served}</td><td>${stats.warrant.pending}</td><td>${stats.warrant.hearingPassed}</td><td>${stats.warrant.next7Days}</td>`;
+            html += `<td>${stats.notice.total}</td><td>${stats.notice.served}</td><td>${stats.notice.pending}</td><td>${stats.notice.hearingPassed}</td><td>${stats.notice.next7Days}</td>`;
+            
+            html += `</tr>`;
+
+            totals.processReceived += totalProcessReceived;
+
+            totals.summons.total += stats.summons.total;
+            totals.summons.served += stats.summons.served;
+            totals.summons.pending += stats.summons.pending;
+            totals.summons.hearingPassed += stats.summons.hearingPassed;
+            totals.summons.next7Days += stats.summons.next7Days;
+
+            totals.warrant.total += stats.warrant.total;
+            totals.warrant.served += stats.warrant.served;
+            totals.warrant.pending += stats.warrant.pending;
+            totals.warrant.hearingPassed += stats.warrant.hearingPassed;
+            totals.warrant.next7Days += stats.warrant.next7Days;
+
+            totals.notice.total += stats.notice.total;
+            totals.notice.served += stats.notice.served;
+            totals.notice.pending += stats.notice.pending;
+            totals.notice.hearingPassed += stats.notice.hearingPassed;
+            totals.notice.next7Days += stats.notice.next7Days;
+        });
+
+        html += '</tbody><tfoot><tr>';
+        html += '<td style="text-align:left;">Total</td>';
+        html += `<td>${totals.processReceived}</td>`;
+        html += `<td>${totals.summons.total}</td><td>${totals.summons.served}</td><td>${totals.summons.pending}</td><td>${totals.summons.hearingPassed}</td><td>${totals.summons.next7Days}</td>`;
+        html += `<td>${totals.warrant.total}</td><td>${totals.warrant.served}</td><td>${totals.warrant.pending}</td><td>${totals.warrant.hearingPassed}</td><td>${totals.warrant.next7Days}</td>`;
+        html += `<td>${totals.notice.total}</td><td>${totals.notice.served}</td><td>${totals.notice.pending}</td><td>${totals.notice.hearingPassed}</td><td>${totals.notice.next7Days}</td>`;
+        html += '</tfoot></table>';
+
+        document.getElementById('output').innerHTML = html;
+    }
+
+    function exportToExcel() {
+        var table = document.getElementById('dataTable');
+        if (!table) return;
+
+        var headers = [];
+        var headerCells = table.rows[1].cells;
+        for (var i = 0; i < headerCells.length; i++) {
+            headers.push(headerCells[i].innerText);
+        }
+
+        var excelData = [];
+        excelData.push(["Process Pending in iCOPS as on " + formattedDate]);
+        excelData.push(["Note: The name of each police station is displayed differently in each court, which is why police stations are listed multiple times under different names."]);
+        excelData.push(headers);
+
+        for (var r = 2; r < table.rows.length; r++) {
+            var rowData = [];
+            var cells = table.rows[r].cells;
+            for (var c = 0; c < cells.length; c++) {
+                var val = cells[c].innerText;
+                var num = Number(val);
+                rowData.push(isNaN(num) || val === '' ? val : num);
+            }
+            excelData.push(rowData);
+        }
+
+        var ws = XLSX.utils.aoa_to_sheet(excelData);
+
+        var colCount = headers.length;
+        ws['!merges'] = [
+            { s: { r: 0, c: 0 }, e: { r: 0, c: colCount - 1 } },
+            { s: { r: 1, c: 0 }, e: { r: 1, c: colCount - 1 } }
+        ];
+
+        // Column widths matching output.xlsx specs
+        ws['!cols'] = [
+            { wch: 15.1 }, // Column A
+            { wch: 8.0 },  // Column B
+            { wch: 8.5 },  // Column C
+            { wch: 13.0 }, // Column D
+            { wch: 13.0 }, // Column E
+            { wch: 13.0 }, // Column F
+            { wch: 13.0 }, // Column G
+            { wch: 8.0 },  // Column H
+            { wch: 8.0 },  // Column I
+            { wch: 8.0 },  // Column J
+            { wch: 13.0 }, // Column K
+            { wch: 13.0 }, // Column L
+            { wch: 8.0 },  // Column M
+            { wch: 8.0 },  // Column N
+            { wch: 8.0 },  // Column O
+            { wch: 13.0 }, // Column P
+            { wch: 13.0 }  // Column Q
+        ];
+
+        var range = XLSX.utils.decode_range(ws['!ref']);
+        for (var R = range.s.r; R <= range.e.r; ++R) {
+            for (var C = range.s.c; C <= range.e.c; ++C) {
+                var cell_address = XLSX.utils.encode_cell({ r: R, c: C });
+                if (!ws[cell_address]) continue;
+                
+                if (!ws[cell_address].s) ws[cell_address].s = {};
+
+                ws[cell_address].s.border = {
+                    top: { style: "thin", color: { auto: 1 } },
+                    bottom: { style: "thin", color: { auto: 1 } },
+                    left: { style: "thin", color: { auto: 1 } },
+                    right: { style: "thin", color: { auto: 1 } }
+                };
+
+                ws[cell_address].s.alignment = {
+                    wrapText: true,
+                    vertical: "center",
+                    horizontal: (C === 0 && R >= 3) ? "left" : "center"
+                };
+
+                if (R === 0) {
+                    ws[cell_address].s.font = { name: "Calibri", sz: 18, bold: false };
+                } else if (R === 1) {
+                    ws[cell_address].s.font = { name: "Calibri", sz: 12, bold: false, color: { rgb: "FF0000" } };
+                } else {
+                    ws[cell_address].s.font = { name: "Calibri", sz: 12, bold: false };
+                }
+            }
+        }
+
+        var wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Pending Details");
+        XLSX.writeFile(wb, "Process_Pending_iCOPS_" + formattedDate.replace(/\//g, '-') + ".xlsx");
+    }
+</script>
+
+</body>
+</html>
